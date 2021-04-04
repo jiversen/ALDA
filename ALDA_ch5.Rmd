@@ -1,0 +1,64 @@
+---
+title: "ALDA Examples"
+output:
+  html_document:
+    code_folding: show
+  pdf_document: default
+---
+
+<https://stats.idre.ucla.edu/r/examples/alda/>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = FALSE, hidden.lines=T)
+
+library(lattice)
+library(latticeExtra)
+library(plotrix)
+
+```
+
+```{r function-defs, include=FALSE}
+# inspired by: https://stackoverflow.com/questions/35627075/r-lattice-multiple-plot-page-how-to-put-text-in-page-margin
+suptitle <- function(title) {
+  require(grid, quietly=T)
+  vp<-viewport(x=0.5,y=1,width=1,height=0.05, just=c('center','top'))
+  pushViewport(vp)
+  grid.text(title,gp=gpar(cex=1.5))
+  popViewport()
+}
+```
+
+
+## Chapter 5 on TIME
+
+
+```{r}
+reading <- read.table("https://stats.idre.ucla.edu/stat/r/examples/alda/data/reading_pp.txt", header=T, sep=",")
+reading[reading$id %in% c(4, 27, 31, 33, 41, 49, 69, 77, 87), ]
+summary(reading)
+```
+
+## Empirical Change Plots
+
+
+```{r}
+library(lattice)
+
+xyplot(piat~age | id,
+       data=reading[reading$id %in% c(4, 27, 31, 33, 41, 49, 69, 77, 87), ],
+       panel=function(x,y,subscripts) {
+         panel.xyplot(x,y,pch=16)
+         panel.lmline(x,y,lty=1)
+         panel.xyplot(reading$agegrp[subscripts],y,pch=3)
+         panel.lmline(reading$agegrp[subscripts],y,lty=4) 
+         },
+       xlab='age or agegrp',ylim=c(0,80), as.table=T, subscripts=T, 
+       key=list(columns=1,
+                text=list(lab=c('age','agegrp')),
+                points=list(pch=c(16,3)),
+                lines=list(lty=c(1,4))
+                ) 
+       )
+       
+```
+

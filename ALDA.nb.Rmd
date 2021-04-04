@@ -1,0 +1,80 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+<https://stats.idre.ucla.edu/r/examples/alda/>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = FALSE, hidden.lines=T)
+
+library(lattice)
+library(latticeExtra)
+library(plotrix)
+
+```
+
+```{r function-defs, include=FALSE}
+# inspired by: https://stackoverflow.com/questions/35627075/r-lattice-multiple-plot-page-how-to-put-text-in-page-margin
+suptitle <- function(title) {
+  require(grid, quietly=T)
+  vp<-viewport(x=0.5,y=1,width=1,height=0.05, just=c('center','top'))
+  pushViewport(vp)
+  grid.text(title,gp=gpar(cex=1.5))
+  popViewport()
+}
+```
+
+## Chapter 1
+
+Introduces importance of 
+
+* longitudinal data
+* 3 or more timepoints
+* important qualities of tests
+    + equitable across time
+    + equal validity (tests same thing. Nice example: multiplication tests math skill in kids, memory in adults)
+    + minimizing errors (though not need to be identical: heteroscadistic ok)
+  
+***
+
+## Chapter 2
+
+#### Data Formats
+* person-level  
+    (each timepoint is a different variable. Can't manage heterogeneity in spacing, number of TPs, nor time-varying predictors)
+    
+* person-period  
+    (each timepoint on a separate row)
+    
+
+#### Empirical Growth Plots
+
+```{r ch2-load-plot, echo=F}
+
+tolerance.pp <- read.table("https://stats.idre.ucla.edu/wp-content/uploads/2016/02/tolerance1_pp.txt", sep=",", header=T)
+tolerance.pp$id <- as.factor(tolerance.pp$id) #so id will be displayed in each plot's title
+attach(tolerance.pp)
+
+```
+
+```{r ch2-growth-plots}
+# points
+xyplot(tolerance ~ age | id, data=tolerance.pp, as.table=T,ylim=c(0,5),type='b')
+suptitle('Tolerance Raw Data')
+
+# points + loess -- fails with singularities                  #@hide@
+#xyplot(tolerance ~ age | id, data=tolerance.pp, as.table=T,  #@hide@
+#       type=c("p","smooth")) #point and loess                #@hide@
+
+#points + regression
+xyplot(tolerance ~ age | id, data=tolerance.pp, as.table=T,ylim=c(0,5),
+       type=c("p","r")) #point and regression line
+suptitle('Tolerance OLS Fits')
+
+#xyplot(tolerance ~ age | id, data=tolerance.pp, as.table=T,    #@hide@
+#      par.settings = theEconomist.theme(box = "transparent"),  #@hide@
+#      lattice.options = theEconomist.opts())                   #@hide@
+#@hide@
+#asTheEconomist(xyplot(tolerance ~ age | id, data=tolerance.pp, as.table=T))  #@hide@
+```

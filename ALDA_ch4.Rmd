@@ -1,0 +1,134 @@
+---
+title: "ALDA Examples"
+output:
+  html_document:
+    code_folding: show
+  pdf_document: default
+---
+
+<https://stats.idre.ucla.edu/r/examples/alda/>
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, collapse = FALSE)
+
+library(lattice)
+library(latticeExtra)
+library(grid)
+library(plotrix)
+library(tidyverse)
+library(magrittr)
+
+```
+
+```{r function-defs, include=FALSE}
+# inspired by: https://stackoverflow.com/questions/35627075/r-lattice-multiple-plot-page-how-to-put-text-in-page-margin
+suptitle <- function(title, cex=1.5) {
+  require(grid, quietly=T)
+  vp<-viewport(x=0.5,y=1,width=1,height=0.05, just=c('center','top'))
+  pushViewport(vp)
+  grid.text(title,gp=gpar(cex=cex))
+  popViewport()
+}
+```
+
+
+# Chapter 4
+
+Now things start getting really good! Combine level-1 and level-2 models into a single model that
+has several forms of expression that are really informative
+
+### Composite formulation
+
+This shows clearly what's meant by random effect of subject for intercept and slope...that which measures
+the deviation of each subject from the population mean
+
+#### CONDITION = 0
+$$Y_{ij} = (\gamma_{00} + \zeta_{0i}) + (\gamma_{10} + \zeta_{1_i}) * TIME_{ij} + \epsilon_{ij}$$
+
+#### CONDITION = 1
+
+$$Y_{ij} = (\gamma_{00} + \gamma_{01} + \zeta_{0i}) + (\gamma_{10} + \gamma_{11} + \zeta_{1_i}) * TIME_{ij} + \epsilon_{ij}$$
+
+#### Together
+
+$$Y_{ij} = (\gamma_{00} + \gamma_{01}*CONDITION_i + \zeta_{0i}) + (\gamma_{10} + \gamma_{11}*CONDITION_i + \zeta_{1_i}) * TIME_{ij} + \epsilon_{ij}$$
+
+
+### Fixed + random formulation
+
+Rearranged, this clearly distinguishes fixed and radom effects portions of the model
+
+$$Y_{ij} = 
+\underbrace{
+\left[ \gamma_{00} + \gamma_{01} * CONDITION_i + \gamma_{10} * TIME_{ij} + 
+    \gamma_{11} * (CONDITION_i \times TIME_{ij}) \right]
+}_{fixed} 
++ 
+\underbrace{
+\left[
+\zeta_{0i} + \zeta_{1i} * TIME_{ij} + \epsilon_{ij}
+\right]
+}_{random}
+$$
+### random effect distributions
+
+As before:
+
+$$\epsilon_{ij} \sim N(0, \sigma_\epsilon^2) \\ 
+\\
+\begin{bmatrix}
+\zeta_{0i} \\ \zeta_{1i}
+\end{bmatrix}
+\sim \mathcal{N}
+\left(
+\begin{bmatrix}
+  0 \\ 0
+\end{bmatrix},
+\begin{bmatrix}
+  \sigma_{0}^2 & \sigma_{01} \\ \sigma_{10} & \sigma_{1}^2
+\end{bmatrix}
+\right)$$
+
+## Examples
+
+```{r load data}
+alcohol1 <- read.table("https://stats.idre.ucla.edu/stat/r/examples/alda/data/alcohol1_pp.txt", header=T, sep=",")
+alcohol1$id %<>% as.factor
+attach(alcohol1)
+```
+
+## Empirical Change Plots
+
+```{r plot}
+subset <- alcohol1[alcohol1$id %in% c(4, 14, 23, 32, 41, 56, 65, 82), ]
+subset
+
+xyplot( alcuse ~ age | id,
+        data = subset,
+        as.table=T, ylim=c(-1,4),type=c("p","r"))
+
+
+```
+
+## Models
+
+
+```{r, eval=F}
+library(nlme)
+
+model1<- lme(cog ~ time * program, data=early.int, random= ~time | id, method="ML")
+summary(model1)
+       
+```
+
+## Interpretation
+
+
+### Plotting Fits
+```{r fits, eval=F}
+a <- fitted.values(model1)
+interaction.plot(age, program, a, xlab="AGE", ylab="COG", 
+                 ylim=c(50, 150), lwd=4, lty=1, col=4:5)
+
+```
+
