@@ -17,6 +17,8 @@ library(grid)
 library(plotrix)
 library(tidyverse)
 library(magrittr)
+library(nlme)
+library(lme4)
 
 ```
 
@@ -39,8 +41,9 @@ has several forms of expression that are really informative
 
 ### Composite formulation
 
-This shows clearly what's meant by random effect of subject for intercept and slope...that which measures
-the deviation of each subject from the population mean
+This shows clearly what's meant by random effect of subject for intercept ($\zeta_{0i}$) 
+and slope ($\zeta_{1i}$)...that which measures the entirety of 
+the deviation of each subject $i$ from the population mean intercept and slope $\gamma_{00}$ and $\gamma_{10}$
 
 #### CONDITION = 0
 $$Y_{ij} = (\gamma_{00} + \zeta_{0i}) + (\gamma_{10} + \zeta_{1_i}) * TIME_{ij} + \epsilon_{ij}$$
@@ -51,10 +54,20 @@ $$Y_{ij} = (\gamma_{00} + \gamma_{01} + \zeta_{0i}) + (\gamma_{10} + \gamma_{11}
 
 #### Together
 
-$$Y_{ij} = (\gamma_{00} + \gamma_{01}*CONDITION_i + \zeta_{0i}) + (\gamma_{10} + \gamma_{11}*CONDITION_i + \zeta_{1_i}) * TIME_{ij} + \epsilon_{ij}$$
+$$Y_{ij} = 
+\underbrace{
+(\gamma_{00} + \gamma_{01}*CONDITION_i + \zeta_{0i})
+}_{\pi_{0i}}
++ 
+\underbrace{
+(\gamma_{10} + \gamma_{11}*CONDITION_i + \zeta_{1_i})
+}_{\pi_{1i}}
+* TIME_{ij} 
++ \epsilon_{ij}
+$$
 
 
-### Fixed + random formulation
+### Fixed + rando0im formulation
 
 Rearranged, this clearly distinguishes fixed and radom effects portions of the model
 
@@ -70,6 +83,7 @@ $$Y_{ij} =
 \right]
 }_{random}
 $$
+
 ### random effect distributions
 
 As before:
@@ -94,10 +108,12 @@ $$\epsilon_{ij} \sim N(0, \sigma_\epsilon^2) \\
 ```{r load data}
 alcohol1 <- read.table("https://stats.idre.ucla.edu/stat/r/examples/alda/data/alcohol1_pp.txt", header=T, sep=",")
 alcohol1$id %<>% as.factor
-attach(alcohol1)
+if (! 'alcohol1' %in% search()) {
+  attach(alcohol1)
+}
 ```
 
-## Empirical Change Plots
+## Empirical Growth Plots
 
 ```{r plot}
 subset <- alcohol1[alcohol1$id %in% c(4, 14, 23, 32, 41, 56, 65, 82), ]
@@ -106,19 +122,79 @@ subset
 xyplot( alcuse ~ age | id,
         data = subset,
         as.table=T, ylim=c(-1,4),type=c("p","r"))
+suptitle('Fig 4.1, selected empirical growth plots + OLS fits')
+```
 
 
+```{r ucla interaction plot by coa}
+alcohol.coa0 <- alcohol1 %>% filter(coa==0) %>% droplevels()
+fits.coa0 <- by(alcohol.coa0, alcohol.coa0$id,
+               function(data) lm(alcuse~age, data=data))
+
+interaction.plot(alcohol.coa0$age, alcohol.coa0$id, sapply(fits.coa0,fitted.values),
+                 xlab='AGE',ylab='ALCUSE', ylim=c(-1,4), lwd=1)
+suptitle('Fig 4.2 OLS Fit, Alcuse vs Age, coa=0')
+  
+```
+
+
+```{r fit individual models, echo=FALSE}
+fits <- by(alcohol1, id, function(x) lm(alcuse ~ age, data=x) )
+coefs = sapply(fits, coef)
+fit.vals = sapply(fits,fitted.values)
+se = sapply(fits, function(x) summary(x)$coefficients[,'Std. Error'])
+rv = sapply(fits, function(x) summary(x)$sigma**2 )
+rsq = sapply(fits,function(x) summary(x)$r.squared )
+```
+
+```{r interaction plots}
+ggplot(alcohol1, aes(age, fit.vals, group=id, color=factor(coa))) +
+  geom_line() +
+  scale_colour_manual(values = c('blue','red')) +
+  stat_smooth(aes(group=factor(coa), fill=factor(coa)), method='lm') +
+  facet_wrap(~coa)
 ```
 
 ## Models
 
+The book takes the approach of building successively more complete models. It suggests first fitting 
+Unconditional Means and Unconditional Growth models, literally with no $CONDITION$ dependent variable.
 
-```{r, eval=F}
-library(nlme)
+### Unconditional Means Model
 
-model1<- lme(cog ~ time * program, data=early.int, random= ~time | id, method="ML")
-summary(model1)
-       
+$$Y_{ij} = \pi_{0i} + \epsilon_{ij} \\ \pi_{0i} = \gamma_{00} + \zeta_{0i} \\
+Y_{ij} = \left[  \gamma_{00}  \right] + \left[ \epsilon_{ij} + \zeta_{0i} \right]
+$$
+
+```{r fit model A}
+model.a <- lme(alcuse ~ 1, alcohol1, random = ~1 | id)
+summary(model.a)
+```
+
+#### Evaluation
+
+
+#### Compare with lme4::lmer
+```{r fit model A lmer}
+model.a2 <- lmer(alcuse ~ 1 + (1 | id), alcohol1)
+summary(model.a2)
+```
+Interesting note on why lmer does not include p-values:
+https://stat.ethz.ch/pipermail/r-help/2006-May/094765.html
+
+
+### Unconditional Growth Model
+
+$$Y_{ij} = \pi_{0i} + \pi_{1i}*TIME_{ij} + \epsilon_{ij} \\ 
+\pi_{0i} = \gamma_{00} + \zeta_{0i} \\
+\pi_{1i} = \gamma_{10} + \zeta_{1i} \\
+Y_{ij} = \left[  \gamma_{00} + \gamma_{10} * TIME_{ij} \right] + 
+\left[ \epsilon_{ij} + \zeta_{0i} + \zeta_{1i} * TIME_{ij}  \right]
+$$
+
+```{r fit model B}
+model.b <- lme(alcuse ~ 1 + age_14, alcohol1, random = ~ 1 + age_14 | id, method = 'ML') #1 are implied if omitted
+summary(model.b)
 ```
 
 ## Interpretation

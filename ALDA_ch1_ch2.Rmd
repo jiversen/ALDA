@@ -107,6 +107,9 @@ by(tolerance.pp, id, function(x) summary(lm(tolerance ~ time, data=x)))
 fits <- by(tolerance.pp, id, function(x) lm(tolerance ~ time, data=x) )
 coefs = sapply(fits, coef)
 se = sapply(fits, function(x) summary(x)$coefficients[,'Std. Error'])
+rv = sapply(fits, function(x) summary(x)$sigma**2 )
+rsq = sapply(fits,function(x) summary(x)$r.squared )
+
 
 print("Initial Status")
 summary(coefs['(Intercept)',])
@@ -117,11 +120,9 @@ summary(coefs['time',])
 stem(coefs['time',], scale=2)
 
 print('Residial variance')
-rv = sapply(fits, function(x) summary(x)$sigma**2 )
 summary(rv)
 
 print("R^2")
-rsq = sapply(fits,function(x) summary(x)$r.squared )
 summary(rsq)
 ```
 
@@ -148,12 +149,13 @@ with(tolerance.pp,
      interaction.plot(age,id,tolerance,ylab='tolerance'))
 ablineclip(reg=allfit, col='purple', lwd=4,x1=1,x2=5)
 legend(1,3.5,c('individuals','mean'),col=c('black','purple'),lwd=c(1,4))
+suptitle("Raw data + overall fit")
 
 with(tolerance.pp,
      interaction.plot(age,id,fit.vals,ylab="fitted tolerance"))
 ablineclip(a=coef(allfit)[1], b=coef(allfit)[2], col='purple', lwd=4, x1=1,x2=5)
 legend(1,3.5,c('individuals','mean'),col=c('black','purple'),lwd=c(1,4))
-
+suptitle("inidividual + overall fits")
 ```
 
 #### fits vs various categories
@@ -162,9 +164,11 @@ legend(1,3.5,c('individuals','mean'),col=c('black','purple'),lwd=c(1,4))
 with(tolerance.pp,
      interaction.plot(age,id,fit.vals,col=male,ylab='tolerance',legend=T,type='l')
      )
+legend(1,3.5,c('Female','Male'),col=c('black','red'),lwd=c(1,1))
+suptitle('Female vs Male')
 ```
 
-#### ggplot2
+#### recreate same plots with ggplot2
 Goal: color by group, rainbow within the group
 ```{r}
 
