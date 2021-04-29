@@ -36,7 +36,7 @@ suptitle <- function(title, cex=1.5) {
 The data are not publicly available, so it's not possible to recreate the chapter.
 Instead, results taken from idre website, and code shown for illustration.
 
-```{r load data}
+```{r load, eval=FALSE}
 early.int <- read.table("d:/earlyint_pp.txt", header=T, sep=",")
 early.int <- early.int %>% mutate(id = factor(id))
 attach(early.int)
@@ -174,6 +174,8 @@ $$\begin{bmatrix}
 \end{bmatrix}
 \right)$$
 
+
+
 ##### Fixed Effects ($\gamma$)
 Describe systematic inter-individual differences in trajectories 
 according to $CONDITION$ predictor variable(s)
@@ -207,12 +209,12 @@ and rate of change (slope) to be correlated.
 *Question Answered*: "Controlling for condition [e.g. intervention], 
 are true initial status and true rate of change related?"
 
-
-
 #### Graphical Depiction of the model
 ![Figure 3.4](images/fig3_4.png)
 
-```{r}
+## Model Fit
+
+```{r fit, eval=FALSE}
 library(nlme)
 
 model1<- lme(cog ~ time * program, data=early.int, random= ~time | id, method="ML")
@@ -249,10 +251,24 @@ Number of Observations: 309
 Number of Groups: 103
 ```
 
-### Interpretation
+## Interpretation of Fixed Effects
 
+### Fitted level-2 model
+$$
+\hat{\pi_{0i}} = \underbrace{107.84}_{Intercept} + \underbrace{6.85}_{program} * PROGRAM_i \\
+\hat{\pi_{1i}} = \underbrace{-21.13}_{time} + \underbrace{5.27}_{time:program} * PROGRAM_i
+$$
+In words: True initial status of non-participant is 107.84. 
+For the average participant, initial status is 6.85 higher (114.69). 
+True annual rate of change for non-participant is -21.13. 
+For the average participant, true rate of change is 5.27 higher (-15.86).
 
 ### Plotting Fits
+
+Non-participant: $\hat{COG} = 107.84 -21.13 (AGE-1)$
+
+Participant: $\hat{COG} = 114.69 -15.86 (AGE-1)$
+
 ```{r fits}
 a <- fitted.values(model1)
 interaction.plot(age, program, a, xlab="AGE", ylab="COG", 
@@ -261,3 +277,69 @@ interaction.plot(age, program, a, xlab="AGE", ylab="COG",
 ```
 
 ![Figure 3.5](images/figure3_5a.gif)
+### Fixed effects parameter hypothesis tests
+
+Null hypothesis: Controlling for all other predictors, the population value is 0.
+
+$z = \frac{\hat(\gamma)}{ase(\hat(\gamma))}$ (3.7)
+
+(Called _t-value_ in _lme_ output)
+
+## Interpretation of Estimated Variance Components
+
+Says it's trickier, as no absolute meaning or graphical aids...
+
+The lme output has less info than in the book--it shows sigmas, but no standard errors or hypothesis,
+tests so unclear how to eveluate. There must be a way to get at this more complete output.
+ALSO, the actual values are different. Why?
+
+Also, how test if assumptions are met?
+
+$$\sigma_{\epsilon}^2 = 8.64^2 = 74.73  \\ \\
+\begin{bmatrix}
+  \sigma_{0}^2 & \sigma_{01} \\ \sigma_{10} & \sigma_{1}^2
+\end{bmatrix}
+= 
+\begin{bmatrix}
+  11.14^2 & 11.14\times3.19\times-0.997 \\ 11.14\times3.19\times-0.997 & 3.19^2
+\end{bmatrix}
+=
+\begin{bmatrix}
+  124.0 & -35.39 \\ -35.39 & 10.16
+\end{bmatrix}$$
+
+
+### Single-parameter variance components hypothesis tests
+
+Is there any remaining residual outcome variation that could potentially be explained 
+by other predictors? Yes, if $\sigma^2 \ne 0$ (i.e. reject null hypothesis).
+_[This doesn't make sense--there should still be random measurement error, right?]_
+
+Suggests where new predictors could be added.
+
+*Utility questioned as sensitive to departures from normality, sample size, imbalance. Perhaps why
+no such output is in the table...
+
+In book, they find $\sigma_{\epsilon}^2$ and $\sigma_{0}^2$ are different from zero, suggesting
+adding an additional Level-1 predictor (e.g. # books in home, or amount of parent interaction), 
+as well as an additional Level-2 predictor(s), time invariant and time-varying, to explain the initial status.
+
+The fact that neither of the slope variance/covariances ($\sigma_{1}^2$ and $\sigma_{01}$) are 
+distinguished from 0 suggests that the intercepts and slopes of individual true change trajectories
+are uncorrelated, and that random slope can be dropped.
+
+## Model Fitting Methods
+
+### Maximum Likelihood
+
+ML Estimates are parameter values that maximize the probability of observing a particular sample of data.
+
+_Likelihood Function_: $P(DATA | PARAMETERS)$. In practice, the _log-liklihood_ is maximized.
+
+_Assumptions about residuals_: normal, mean 0, Level-1 independent of Level-2, 
+all residuals independent of model's predictors.
+
+
+## Pithy Statement
+Outcome probability density's mean is determined by structural parts (Fixed Effects) 
+and its variance is determined by stochastic parts (Random Effects)
